@@ -47,28 +47,30 @@ int main()
 	char delimiter = ' ';
 	char command[MAX_CMD_LEN] = { 0 };
 	char arguments[MAX_ARGV][MAX_CMD_LEN];
-	for(int i = 0; i < MAX_ARGV; i++)
-		for(int j = 0; j < MAX_CMD_LEN; j++)
+	
+	for(int i = 0; i < MAX_ARGV; i++) { 
+		for(int j = 0; j < MAX_CMD_LEN; j++) {
 			arguments[i][j] = 0;
+		}
+	}
 
-	pid_t pidList[4] = {0};
+	pid_t pidList[4] = {-1, -1, -1, -1};
 	int pidListSize = 0;
 
 	char childProccessUserCommand[MAX_CHILD_PROCESSES][MAX_LEN_OF_USER_COMMAND];
 	
-	for(int i = 0; i < MAX_CHILD_PROCESSES; i++)
-		for(int j = 0; j < MAX_LEN_OF_USER_COMMAND; j++)
+	for(int i = 0; i < MAX_CHILD_PROCESSES; i++) {
+		for(int j = 0; j < MAX_LEN_OF_USER_COMMAND; j++) {
 			arguments[i][j] = 0;
+		}
+	}
 
 	while(running) {
 		printf("hw1shell$ ");
 		scanf("%[^\n]%*c", command);
-		// convert_string_lower_capitals(command);
 
 		get_arguments_by_delimiter(arguments, command, &delimiter);
-		printf("Command: %s\n", arguments[0]);
-		
-		
+
 		if(strcmp(arguments[0], "cd") == 0) {
 			int chdir_result = chdir(arguments[1]);
 			if(chdir_result == CHDIR_ERROR_CODE)
@@ -91,20 +93,24 @@ int main()
 		}
 
 		else if(strcmp(arguments[0], "jobs") == 0) {
-			for(int i = 0; i < MAX_CHILD_PROCESSES; i++) {
-				printf("%d	%s", pidList[i], childProccessUserCommand[i]);
+			// print child processes - those that have pid != 0
+			for(int i = 0; i < MAX_CHILD_PROCESSES && pidList[i] != -1; i++) {
+				printf("%d	%s\n", pidList[i], childProccessUserCommand[i]);
 			}
-			printf("\n");
 		}
 
 		else if(strcmp(arguments[0], "fork") == 0) {
 			pid_t fork_value = fork();
-			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE){
-				pidList[pidListSize++] = fork_value;
-				
+			pid_t current_pid = getpid(); // get pid of current proccess
+			
+			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
+				// child process:
+				pidList[pidListSize++] = current_pid;  //save pid of child process.
 			}
 
 			else {
+				// parent process:
+
 
 			}
 			
