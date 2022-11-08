@@ -6,7 +6,10 @@
 
 #define MAX_CMD_LEN 20
 #define MAX_ARGV 4
+#define MAX_CHILD_PROCESSES 4
+#define MAX_LEN_OF_USER_COMMAND 100
 #define CHDIR_ERROR_CODE -1
+#define CHILD_PROCESS_FORK_RETURN_VALUE 0
 
 char to_lower(char character)
 {
@@ -38,23 +41,24 @@ void get_arguments_by_delimiter(char arguments[MAX_ARGV][MAX_CMD_LEN], char *com
 		}
 }
 
-void init_matrix(char arguments[MAX_ARGV][MAX_CMD_LEN])
-{
-	int i, j;
-
-	for(i = 0; i < MAX_ARGV; i++)
-		for(j = 0; j< MAX_CMD_LEN; j++)
-			arguments[i][j] = 0;
-}
-
 int main()
 {
 	int error_flag = 0, running = 1;
 	char delimiter = ' ';
 	char command[MAX_CMD_LEN] = { 0 };
 	char arguments[MAX_ARGV][MAX_CMD_LEN];
+	for(int i = 0; i < MAX_ARGV; i++)
+		for(int j = 0; j < MAX_CMD_LEN; j++)
+			arguments[i][j] = 0;
 
-	init_matrix(arguments); // zero the buffer - arguments
+	pid_t pidList[4] = {0};
+	int pidListSize = 0;
+
+	char childProccessUserCommand[MAX_CHILD_PROCESSES][MAX_LEN_OF_USER_COMMAND];
+	
+	for(int i = 0; i < MAX_CHILD_PROCESSES; i++)
+		for(int j = 0; j < MAX_LEN_OF_USER_COMMAND; j++)
+			arguments[i][j] = 0;
 
 	while(running) {
 		printf("hw1shell$ ");
@@ -69,9 +73,9 @@ int main()
 			int chdir_result = chdir(arguments[1]);
 			if(chdir_result == CHDIR_ERROR_CODE)
 			{
-				fprintf(stderr, "hw1shell: invalid command");
+				fprintf(stderr, "hw1shell: invalid command\n");
 			}
-
+		
 			// remove this part later-- *******
 			char cwd[100];
 			printf("%s\n", getcwd(cwd, sizeof(cwd)));
@@ -86,9 +90,26 @@ int main()
 			running = 0;
 		}
 
-		else if(strcmp(arguments[0], "jobs")) {
+		else if(strcmp(arguments[0], "jobs") == 0) {
+			for(int i = 0; i < MAX_CHILD_PROCESSES; i++) {
+				printf("%d	%s", pidList[i], childProccessUserCommand[i]);
+			}
+			printf("\n");
+		}
 
+		else if(strcmp(arguments[0], "fork") == 0) {
+			pid_t fork_value = fork();
+			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE){
+				pidList[pidListSize++] = fork_value;
+				
+			}
+
+			else {
+
+			}
 			
+
+
 		}
 		
 		
