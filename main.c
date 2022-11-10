@@ -105,13 +105,15 @@ int main()
 			
 			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
 				// child process:
+				printf("Child process started: \n");
 				pidList[pidListSize++] = current_pid;  //save pid of child process.
+				exit();
 			}
 
 			else {
 				// parent process:
-
-
+				printf("Father waiting for child process...\n");
+				wait(NULL);
 			}
 			
 
