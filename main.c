@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include<sys/wait.h>
 
 
 #define MAX_CMD_LEN 20
@@ -26,7 +27,6 @@ void convert_string_lower_capitals(char *string)
 	}
 }
 
-
 void get_arguments_by_delimiter(char arguments[MAX_ARGV][MAX_CMD_LEN], char *command, char *delimiter)
 {
 		char *token;
@@ -39,6 +39,15 @@ void get_arguments_by_delimiter(char arguments[MAX_ARGV][MAX_CMD_LEN], char *com
 
 			token = strtok(NULL, delimiter);
 		}
+}
+
+int compare_last_element_in_string(char *string_to_check, char character_to_compare) 
+{	
+
+	int string_length = strlen(string_to_check);
+	char last_char = string_to_check[string_length - 1];
+
+	return last_char == character_to_compare;
 }
 
 int main()
@@ -54,7 +63,7 @@ int main()
 		}
 	}
 
-	pid_t pidList[4] = {-1, -1, -1, -1};
+	pid_t *pidList_shared_memory[4] = {0};
 	int pidListSize = 0;
 
 	char childProccessUserCommand[MAX_CHILD_PROCESSES][MAX_LEN_OF_USER_COMMAND];
@@ -65,13 +74,38 @@ int main()
 		}
 	}
 
+	int is_background_process = 0;
 	while(running) {
 		printf("hw1shell$ ");
 		scanf("%[^\n]%*c", command);
+		is_background_process = compare_last_element_in_string(command, '&'); // background if  command ends with &
 
 		get_arguments_by_delimiter(arguments, command, &delimiter);
 
-		if(strcmp(arguments[0], "cd") == 0) {
+		if(is_background_process) {
+			pid_t fork_value = fork();
+		
+			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
+				pid_t current_pid = getpid(); // get pid of child process
+				
+				*pidList[pidListSize++] = current_pid;  //save pid of child process.
+				sleep(5);
+
+
+				printf("Child process terminated: \n");
+				exit(1);
+			}
+
+			else {
+				// parent process:
+				printf("well...\n");
+				//printf("Father waiting for child process...\n");
+				//wait(NULL); // reap child process
+			}
+		}
+
+
+		else if(strcmp(arguments[0], "cd") == 0) {
 			int chdir_result = chdir(arguments[1]);
 			if(chdir_result == CHDIR_ERROR_CODE)
 			{
@@ -90,35 +124,17 @@ int main()
 			// kill procesess running in background..
 			// free dynamically allocated memory
 			running = 0;
+			wait(NULL); // reap child processes
 		}
 
 		else if(strcmp(arguments[0], "jobs") == 0) {
 			// print child processes - those that have pid != 0
-			for(int i = 0; i < MAX_CHILD_PROCESSES && pidList[i] != -1; i++) {
-				printf("%d	%s\n", pidList[i], childProccessUserCommand[i]);
+			for(int i = 0; i < MAX_CHILD_PROCESSES; i++) {
+				printf("%d	%s\n", *pidList[i], childProccessUserCommand[i]);
 			}
 		}
 
-		else if(strcmp(arguments[0], "fork") == 0) {
-			pid_t fork_value = fork();
-			pid_t current_pid = getpid(); // get pid of current proccess
-			
-			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
-				// child process:
-				printf("Child process started: \n");
-				pidList[pidListSize++] = current_pid;  //save pid of child process.
-				exit();
-			}
 
-			else {
-				// parent process:
-				printf("Father waiting for child process...\n");
-				wait(NULL);
-			}
-			
-
-
-		}
 		
 		
 		
