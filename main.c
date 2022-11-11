@@ -3,9 +3,12 @@
 #include <unistd.h>
 #include <string.h>
 #include<sys/wait.h>
+#include <sys/mman.h>
 
-
+#define PRINT_PROMPT printf("hw1shell$ ")
+#define GET_LINE_REGEX "%[^\n]%*c"
 #define MAX_CMD_LEN 20
+#define MAX_PROCESSES 4
 #define MAX_ARGV 4
 #define MAX_CHILD_PROCESSES 4
 #define MAX_LEN_OF_USER_COMMAND 100
@@ -50,35 +53,36 @@ int compare_last_element_in_string(char *string_to_check, char character_to_comp
 	return last_char == character_to_compare;
 }
 
+void init_matrix(char **arguments, char **child_proccess_user_cmd)
+{
+	memset(arguments, 0, sizeof(char) * MAX_ARGV * MAX_CMD_LEN);
+	memset(child_proccess_user_cmd, 0, sizeof(char) * MAX_CHILD_PROCESSES * MAX_LEN_OF_USER_COMMAND);
+}
+
 int main()
 {
+
+	int pidListSize = 0;
 	int error_flag = 0, running = 1;
+	int is_background_process = 0;
 	char delimiter = ' ';
 	char command[MAX_CMD_LEN] = { 0 };
 	char arguments[MAX_ARGV][MAX_CMD_LEN];
-	
-	for(int i = 0; i < MAX_ARGV; i++) { 
-		for(int j = 0; j < MAX_CMD_LEN; j++) {
-			arguments[i][j] = 0;
-		}
-	}
+	char child_proccess_user_cmd[MAX_CHILD_PROCESSES][MAX_LEN_OF_USER_COMMAND];
+	pid_t *pid_array_shared_memory;
 
-	pid_t *pidList_shared_memory[4] = {0};
-	int pidListSize = 0;
+	/* Init matrices */
+	init_matrix(arguments, child_proccess_user_cmd);
+	/* Get shared memory between child and father processes */
+	pid_array_shared_memory = mmap(
+								NULL, MAX_PROCESSES*sizeof(int), PROT_READ | PROT_WRITE,
+								MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
-	char childProccessUserCommand[MAX_CHILD_PROCESSES][MAX_LEN_OF_USER_COMMAND];
-	
-	for(int i = 0; i < MAX_CHILD_PROCESSES; i++) {
-		for(int j = 0; j < MAX_LEN_OF_USER_COMMAND; j++) {
-			arguments[i][j] = 0;
-		}
-	}
-
-	int is_background_process = 0;
 	while(running) {
-		printf("hw1shell$ ");
-		scanf("%[^\n]%*c", command);
-		is_background_process = compare_last_element_in_string(command, '&'); // background if  command ends with &
+		PRINT_PROMPT;
+		scanf(GET_LINE_REGEX, command);
+		/* Background if  command ends with & */
+		is_background_process = compare_last_element_in_string(command, '&');
 
 		get_arguments_by_delimiter(arguments, command, &delimiter);
 
@@ -86,9 +90,10 @@ int main()
 			pid_t fork_value = fork();
 		
 			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
-				pid_t current_pid = getpid(); // get pid of child process
-				
-				*pidList[pidListSize++] = current_pid;  //save pid of child process.
+				/* Get pid of child process */
+				pid_t current_pid = getpid();
+				/* Save pid of child process.*/
+				pid_array_shared_memory[pidListSize++] = current_pid;
 				sleep(5);
 
 
@@ -97,7 +102,7 @@ int main()
 			}
 
 			else {
-				// parent process:
+				/* Parent process: */
 				printf("well...\n");
 				//printf("Father waiting for child process...\n");
 				//wait(NULL); // reap child process
@@ -130,7 +135,7 @@ int main()
 		else if(strcmp(arguments[0], "jobs") == 0) {
 			// print child processes - those that have pid != 0
 			for(int i = 0; i < MAX_CHILD_PROCESSES; i++) {
-				printf("%d	%s\n", *pidList[i], childProccessUserCommand[i]);
+				printf("%d	%s\n", pid_array_shared_memory[i], child_proccess_user_cmd[i]);
 			}
 		}
 
