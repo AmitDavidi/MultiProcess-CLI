@@ -9,7 +9,7 @@
 #define GET_LINE_REGEX "%[^\n]%*c"
 #define MAX_CMD_LEN 20
 #define MAX_PROCESSES 4
-#define MAX_ARGV 4
+#define MAX_ARGV 6
 #define MAX_LEN_OF_USER_COMMAND 100
 #define CHDIR_ERROR_CODE -1
 #define CHILD_PROCESS_FORK_RETURN_VALUE 0
@@ -43,6 +43,11 @@ void get_arguments_by_delimiter(char arguments[MAX_ARGV][MAX_CMD_LEN], char *com
 {
 		char *token;
 		int i = 0;
+		for(int i = 0; i < MAX_ARGV; i++) {
+			for(int k = 0; k < MAX_CMD_LEN; k++) {
+				arguments[i][k] = 0;
+			}
+		}
 
 		token = strtok(command, delimiter);
 		while(token != NULL) {
@@ -52,6 +57,8 @@ void get_arguments_by_delimiter(char arguments[MAX_ARGV][MAX_CMD_LEN], char *com
 			token = strtok(NULL, delimiter);
 		}
 }
+
+
 
 int compare_last_element_in_string(char *string_to_check, char character_to_compare) 
 {	
@@ -92,19 +99,27 @@ int main()
 
 	while(running) {
 		PRINT_PROMPT;
-		scanf(GET_LINE_REGEX, command);
-		
+		// scanf(GET_LINE_REGEX, command);
+		fgets(command, sizeof(command), stdin);
+		command[strcspn(command, "\n")] = 0; // remove new line character
+
 		/* Background if  command ends with & */
 		is_background_process = compare_last_element_in_string(command, '&');
 
+
 		get_arguments_by_delimiter(arguments, command, &delimiter);
+		for(int i = 0 ; i < MAX_ARGV; i ++) {
+			printf("argument %d = %s\n", i, arguments[i]);
+		}
 
 		if(is_background_process) {
 			
 			if(*number_of_active_processes == MAX_PROCESSES) {
 				fprintf(stderr, "hw1shell: too many background commands running\n");
 			}
+
 			else {
+				// create a background process
 				pid_t fork_value = fork();
 				strcpy(child_process_command_history[*number_of_active_processes], command); // save the command
 			
@@ -134,7 +149,6 @@ int main()
 
 				else {
 					/* Parent process: */
-					printf("well...\n");
 					//printf("Father waiting for child process...\n");
 					// wait(NULL); // reap child process
 				}
@@ -144,15 +158,9 @@ int main()
 
 		else if(strcmp(arguments[0], "cd") == 0) {
 			int chdir_result = chdir(arguments[1]);
-			if(chdir_result == CHDIR_ERROR_CODE)
-			{
+			if(chdir_result == CHDIR_ERROR_CODE)  {
 				fprintf(stderr, "hw1shell: invalid command\n");
 			}
-		
-			// remove this part later-- *******
-			char cwd[100];
-			printf("%s\n", getcwd(cwd, sizeof(cwd)));
-			// 
 		}
 
 
@@ -161,6 +169,7 @@ int main()
 			// kill procesess running in background..
 			// free dynamically allocated memory
 			running = 0;
+
 			wait(NULL); // reap child processes
 		}
 
@@ -178,11 +187,16 @@ int main()
 			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
 				*PID_external_command = getpid();
 				char *res = concat("/usr/bin/", arguments[0]);
-				execl(res, arguments[0], NULL);
+
+				// how to pass arguments ? ******* ask
+
+				execvp(arguments[0], arguments+1);
 				free(res);
+				exit(0);
 			}
 			else {
-				waitpid(*PID_external_command, NULL, NULL);
+				// HOW TO USE WAITPID******? ask
+				waitpid(*PID_external_command, (int*)NULL, 0);
 			}
 	}	
 
