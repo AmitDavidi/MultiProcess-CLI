@@ -6,38 +6,15 @@
 #include <sys/mman.h>
 
 #define PRINT_PROMPT printf("hw1shell$ ")
-#define GET_LINE_REGEX "%[^\n]%*c"
-#define MAX_CMD_LEN 20
+
+#define MAX_CMD_LEN 100
 #define MAX_PROCESSES 4
-#define MAX_ARGV 6
+#define MAX_ARGV 50
 #define MAX_LEN_OF_USER_COMMAND 100
 #define CHDIR_ERROR_CODE -1
 #define CHILD_PROCESS_FORK_RETURN_VALUE 0
 
 
-char* concat(const char *first, const char *second)
-{
-    char *result = malloc(strlen(first) + strlen(second) + 1); // +1 for the null-terminator
-    // in real code you would check for errors in malloc here
-    strcpy(result, first);
-    strcat(result, second);
-    return result;
-}
-
-char to_lower(char character)
-{
-	if(character <= 'Z' && character >= 'A')
-		character = character + ('a' - 'A');
-	return character;
-}
-
-void convert_string_lower_capitals(char *string)
-{
-	int i;
-	for(i = 0; string[i] != 0; i++) {
-		string[i] = to_lower(string[i]);
-	}
-}
 
 int compare_last_element_in_string(char *string_to_check, char character_to_compare) 
 {	
@@ -51,6 +28,7 @@ int compare_last_element_in_string(char *string_to_check, char character_to_comp
 
 int main()
 {
+
 
 	int error_flag = 0, running = 1;
 	int is_background_process = 0;
@@ -76,10 +54,13 @@ int main()
 	int argc = 0;
 	while(running) {
 		PRINT_PROMPT;
-		// scanf(GET_LINE_REGEX, command);
 		fgets(command, sizeof(command), stdin);
-		command[strcspn(command, "\n")] = 0; // remove new line character
 
+		if(command[0] == '\n') {
+			continue;
+		}
+
+		command[strcspn(command, "\n")] = 0; // remove new line character
 		/* Background if  command ends with & */
 		is_background_process = compare_last_element_in_string(command, '&');
 
@@ -137,7 +118,6 @@ int main()
 			}
 		}
 
-
 		else if(strcmp(arguments[0], "exit") == 0) {
 			
 			// kill procesess running in background..
@@ -156,19 +136,17 @@ int main()
 		}
 
 		else {
+
 			pid_t fork_value = fork();
 
 			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
 				*PID_external_command = getpid();
-				printf("\n");
-				for(int i = 0 ; i < MAX_ARGV; i ++) {
-					printf("argument %d = %s\n", i, arguments[i]);
-		}
 				execvp(arguments[0], arguments);
+
 				exit(0);
 			}
 			else {
-				// HOW TO USE WAITPID******? ask
+				sleep(0.01);
 				waitpid(*PID_external_command, (int*)NULL, 0);
 			}
 	}	
