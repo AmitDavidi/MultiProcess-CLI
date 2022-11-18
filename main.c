@@ -91,10 +91,7 @@ int main()
 
 		/* Walk through the other tokens (parameters) */
 		while((arguments[argc] != NULL) && (argc < MAX_ARGV))
-		{
 			arguments[++argc] = strtok(NULL, " ");
-		}
-
 
 		if(is_background_process) {
 			
