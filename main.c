@@ -39,38 +39,6 @@ void convert_string_lower_capitals(char *string)
 	}
 }
 
-
-
-void get_arguments_by_delimiter(char *arguments[MAX_ARGV], char *command, char *delimiter)
-{
-		static int temp_idx = -1;
-		static unsigned temp_ptr = -1;
-		if ( temp_idx != -1) {
-			printf("%d, %d\n", temp_idx, temp_ptr);
-			*(arguments[temp_idx]) = (char*)temp_ptr;
-		}
-
-		char *token;
-		for(int k = 0; k < MAX_ARGV; k++)
-			memset(arguments[k], 0, MAX_CMD_LEN);
-		
-		int i = 0;
-
-		token = strtok(command, delimiter);
-		while(token != NULL) {
-			strcpy(arguments[i], token);
-			i++;
-			token = strtok(NULL, delimiter);
-		}
-
-		temp_idx  = i;
-		temp_ptr = arguments[i];
-		arguments[i] = NULL;
-
-}
-
-
-
 int compare_last_element_in_string(char *string_to_check, char character_to_compare) 
 {	
 
@@ -90,20 +58,14 @@ int main()
 
 	char command[MAX_CMD_LEN] = { 0 }; // user input
 	char *arguments[MAX_ARGV]; // parsed user input
-	
-	for(int i = 0 ; i < MAX_ARGV; i++) {
-		arguments[i] = (char*)calloc(sizeof(char) , MAX_CMD_LEN);
-	}
 
 	char child_process_command_history[MAX_PROCESSES][MAX_LEN_OF_USER_COMMAND] = { {0} }; // command history
-
 
 	int *number_of_active_processes = mmap(NULL, sizeof(int*), PROT_READ | PROT_WRITE , MAP_ANONYMOUS | MAP_SHARED, -1, 0); // num of processes
 	*number_of_active_processes = 0;
 	
 	int *PID_external_command = mmap(NULL, sizeof(int*), PROT_READ | PROT_WRITE , MAP_ANONYMOUS | MAP_SHARED, -1, 0); // num of processes
 	*PID_external_command = 0;
-	
 
 	pid_t *pid_array_shared_memory;
 	/* Get shared memory between child and father processes */
@@ -111,7 +73,7 @@ int main()
 								NULL, MAX_PROCESSES*sizeof(int), PROT_READ | PROT_WRITE,
 								MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
-
+	int argc = 0;
 	while(running) {
 		PRINT_PROMPT;
 		// scanf(GET_LINE_REGEX, command);
@@ -121,8 +83,17 @@ int main()
 		/* Background if  command ends with & */
 		is_background_process = compare_last_element_in_string(command, '&');
 
+		argc = 0;
+		char *arguments[MAX_ARGV];
 
-		get_arguments_by_delimiter(arguments, command, &delimiter);
+		/* Get the first token (cmd name) */
+		arguments[argc] = strtok(command, " ");
+
+		/* Walk through the other tokens (parameters) */
+		while((arguments[argc] != NULL) && (argc < MAX_ARGV))
+		{
+			arguments[++argc] = strtok(NULL, " ");
+		}
 
 
 		if(is_background_process) {
