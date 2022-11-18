@@ -39,23 +39,34 @@ void convert_string_lower_capitals(char *string)
 	}
 }
 
-void get_arguments_by_delimiter(char arguments[MAX_ARGV][MAX_CMD_LEN], char *command, char *delimiter)
+
+
+void get_arguments_by_delimiter(char *arguments[MAX_ARGV], char *command, char *delimiter)
 {
-		char *token;
-		int i = 0;
-		for(int i = 0; i < MAX_ARGV; i++) {
-			for(int k = 0; k < MAX_CMD_LEN; k++) {
-				arguments[i][k] = 0;
-			}
+		static int temp_idx = -1;
+		static unsigned temp_ptr = -1;
+		if ( temp_idx != -1) {
+			printf("%d, %d\n", temp_idx, temp_ptr);
+			*(arguments[temp_idx]) = (char*)temp_ptr;
 		}
+
+		char *token;
+		for(int k = 0; k < MAX_ARGV; k++)
+			memset(arguments[k], 0, MAX_CMD_LEN);
+		
+		int i = 0;
 
 		token = strtok(command, delimiter);
 		while(token != NULL) {
 			strcpy(arguments[i], token);
 			i++;
-
 			token = strtok(NULL, delimiter);
 		}
+
+		temp_idx  = i;
+		temp_ptr = arguments[i];
+		arguments[i] = NULL;
+
 }
 
 
@@ -75,10 +86,14 @@ int main()
 
 	int error_flag = 0, running = 1;
 	int is_background_process = 0;
-	char delimiter = ' ';
+	const char delimiter[] = " ";
 
 	char command[MAX_CMD_LEN] = { 0 }; // user input
-	char arguments[MAX_ARGV][MAX_CMD_LEN] = {{0}}; // parsed user input
+	char *arguments[MAX_ARGV]; // parsed user input
+	
+	for(int i = 0 ; i < MAX_ARGV; i++) {
+		arguments[i] = (char*)calloc(sizeof(char) , MAX_CMD_LEN);
+	}
 
 	char child_process_command_history[MAX_PROCESSES][MAX_LEN_OF_USER_COMMAND] = { {0} }; // command history
 
@@ -108,9 +123,7 @@ int main()
 
 
 		get_arguments_by_delimiter(arguments, command, &delimiter);
-		for(int i = 0 ; i < MAX_ARGV; i ++) {
-			printf("argument %d = %s\n", i, arguments[i]);
-		}
+
 
 		if(is_background_process) {
 			
@@ -146,16 +159,9 @@ int main()
 					(*number_of_active_processes)--;
 					exit(1);
 				}
-
-				else {
-					/* Parent process: */
-					//printf("Father waiting for child process...\n");
-					// wait(NULL); // reap child process
-				}
 			}
 		}
-		
-
+	
 		else if(strcmp(arguments[0], "cd") == 0) {
 			int chdir_result = chdir(arguments[1]);
 			if(chdir_result == CHDIR_ERROR_CODE)  {
@@ -186,12 +192,11 @@ int main()
 
 			if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
 				*PID_external_command = getpid();
-				char *res = concat("/usr/bin/", arguments[0]);
-
-				// how to pass arguments ? ******* ask
-
-				execvp(arguments[0], arguments+1);
-				free(res);
+				printf("\n");
+				for(int i = 0 ; i < MAX_ARGV; i ++) {
+					printf("argument %d = %s\n", i, arguments[i]);
+		}
+				execvp(arguments[0], arguments);
 				exit(0);
 			}
 			else {
