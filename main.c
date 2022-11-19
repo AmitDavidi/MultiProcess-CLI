@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include<sys/wait.h>
+#include <sys/wait.h>
 #include <sys/mman.h>
+
+
 
 #define PRINT_PROMPT printf("hw1shell$ ")
 
@@ -15,14 +17,17 @@
 #define CHILD_PROCESS_FORK_RETURN_VALUE 0
 
 
-
-int compare_last_element_in_string(char *string_to_check, char character_to_compare) 
+int compare_last_element_in_string_and_remove(char *string_to_check, char character_to_compare) 
 {	
 
 	int string_length = strlen(string_to_check);
 	char last_char = string_to_check[string_length - 1];
+	
+	if(last_char == character_to_compare) { // removes '&' from the command arguments
+		string_to_check[string_length - 1] = '\0';
+	}
 
-	return last_char == character_to_compare;
+	return last_char == character_to_compare; 
 }
 
 
@@ -32,17 +37,18 @@ int main()
 
 	int error_flag = 0, running = 1;
 	int is_background_process = 0;
-	const char delimiter[] = " ";
 
 	char command[MAX_CMD_LEN] = { 0 }; // user input
 	char *arguments[MAX_ARGV]; // parsed user input
 
 	char child_process_command_history[MAX_PROCESSES][MAX_LEN_OF_USER_COMMAND] = { {0} }; // command history
 
-	int *number_of_active_processes = mmap(NULL, sizeof(int*), PROT_READ | PROT_WRITE , MAP_ANONYMOUS | MAP_SHARED, -1, 0); // num of processes
+	int *number_of_active_processes = mmap(NULL, sizeof(int*), PROT_READ | PROT_WRITE,
+			 MAP_ANONYMOUS | MAP_SHARED, -1, 0); // num of processes
 	*number_of_active_processes = 0;
 	
-	int *PID_external_command = mmap(NULL, sizeof(int*), PROT_READ | PROT_WRITE , MAP_ANONYMOUS | MAP_SHARED, -1, 0); // num of processes
+	int *PID_external_command = mmap(NULL, sizeof(int*), PROT_READ | PROT_WRITE ,
+			 MAP_ANONYMOUS | MAP_SHARED, -1, 0); // num of processes
 	*PID_external_command = 0;
 
 	pid_t *pid_array_shared_memory;
@@ -62,7 +68,7 @@ int main()
 
 		command[strcspn(command, "\n")] = 0; // remove new line character
 		/* Background if  command ends with & */
-		is_background_process = compare_last_element_in_string(command, '&');
+		is_background_process = compare_last_element_in_string_and_remove(command, '&');
 
 		argc = 0;
 		char *arguments[MAX_ARGV];
@@ -75,7 +81,6 @@ int main()
 			arguments[++argc] = strtok(NULL, " ");
 
 		if(is_background_process) {
-			
 			if(*number_of_active_processes == MAX_PROCESSES) {
 				fprintf(stderr, "hw1shell: too many background commands running\n");
 			}
@@ -96,18 +101,13 @@ int main()
 					}
 					(*number_of_active_processes)++;
 					
-					
+					execvp(arguments[0], arguments);
 
-
-					for(int i = 0; i < MAX_PROCESSES; i++) {
-						if(pid_array_shared_memory[i] == current_pid) {
-							pid_array_shared_memory[i] = 0;
-						}
-					}
-
-					(*number_of_active_processes)--;
-					exit(1);
 				}
+				else {
+					sleep(0.01);
+				}
+
 			}
 		}
 	
@@ -149,9 +149,22 @@ int main()
 				sleep(0.01);
 				waitpid(*PID_external_command, (int*)NULL, 0);
 			}
-	}	
+		}
 
-	
+
+		// reap zombie processes
+		
+		for(int proccess_num = 0; proccess_num < MAX_PROCESSES; proccess_num++) {
+			int pid_to_check = pid_array_shared_memory[proccess_num];
+			if(pid_to_check == 0)
+				continue; // skip empty pids
+
+			if(waitpid(pid_to_check, (int*)NULL, WNOHANG)) {
+				printf("%d is dead\n", pid_to_check );
+				pid_array_shared_memory[proccess_num] = 0;
+				(*number_of_active_processes)--;
+			}
+		}
 	}
 
 	printf("Exiting...\n");
