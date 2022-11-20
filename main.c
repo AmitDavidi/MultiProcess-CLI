@@ -20,6 +20,7 @@ extern int errno;
 #define CHILD_PROCESS_ERROR_CODE -1
 #define SYSTEM_CALL_ERROR -1
 #define NO_ACESS_CODE -1
+#define PROCESS_DID_NOT_CHANGE_STATE 0
 
 int compare_last_element_in_string_and_remove(char *string_to_check, char character_to_compare) 
 {	
@@ -184,6 +185,8 @@ int main()
 
 			/* fork successfull - do work */
 			else {
+				
+				/* child process*/
 				if (fork_value == CHILD_PROCESS_FORK_RETURN_VALUE) {
 					*PID_external_command = getpid();
 
@@ -198,13 +201,14 @@ int main()
 
 				}
 
+				/* father process work */
 				else {
 					sleep(0.1);
 					system_call_status = waitpid(*PID_external_command, (int*)NULL, 0);
 					
 					/* system call fail - print error 13.*/
 					if(system_call_status == -1) {
-						fprintf(stderr,"%s failed, errno is %d\n", arguments[0], errno);
+						fprintf(stderr,"waitpid failed, errno is %d\n", errno);
 					}
 				}
 			}
@@ -222,13 +226,16 @@ int main()
 			
 			/* system call error print error 13.*/
 			if(system_call_status == -1) {
-				fprintf(stderr,"%s failed, errno is %d\n", arguments[0], errno);
+				fprintf(stderr,"waitpid failed, errno is %d\n", errno);
 			}
+
 			/* system call success - do work*/
-			else {
+			else if(system_call_status != PROCESS_DID_NOT_CHANGE_STATE) {
+				/* if process changed state - active -> zombie - reap it*/
+
 				printf("pid %d finished\n", pid_to_check );
-				pid_array_shared_memory[proccess_num] = 0; // remove from shared memory
-				(*number_of_active_processes)--; // reduce active processes counter by one
+				pid_array_shared_memory[proccess_num] = 0; 
+				(*number_of_active_processes)--; 
 			}
 		}
 
